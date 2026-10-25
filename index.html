@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>외계 신호 해독 · 비트 스위치 통신</title>
+<title>외계 신호 해독 · 2026 갈산제 로직의 숲</title>
 <style>
 :root{
   --bg:#0a1124; --bg2:#101a36; --card:#141f3d; --card2:#1a274d; --line:#2b3a68;
@@ -23,9 +23,36 @@ body{
   position:relative;z-index:2;display:flex;align-items:center;gap:14px;padding:12px 28px;
   border-bottom:1px solid rgba(255,255,255,.07);background:rgba(10,17,36,.65);backdrop-filter:blur(6px);
 }
-#brand{font-weight:800;letter-spacing:.02em;font-size:22px}
+#brand{font-weight:800;letter-spacing:.02em;font-size:22px;margin-right:auto}
 #brand small{font-weight:500;color:var(--sub);font-size:16px;margin-left:8px}
-#progress{margin-left:auto;color:var(--accent2);font-size:18px}
+#pwrap{position:relative;z-index:2;max-width:1080px;margin:10px auto 0;padding:0 28px}
+#pwrap.hide{visibility:hidden;height:0;margin:0;overflow:hidden}
+.pline{display:flex;align-items:baseline;gap:12px;font-size:19px;margin-bottom:6px;min-height:30px}
+#pstage{display:inline-block;font-weight:800;color:var(--accent);transform-origin:left center}
+#pstage.up{animation:stagepop .7s ease-out}
+#ptitle{color:var(--text)}
+#pnote{margin-left:auto;color:var(--sub);font-size:17px}
+.ptrack{position:relative;height:14px;border-radius:999px;background:#0c1330;border:1px solid var(--line);overflow:hidden}
+.pfill{height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .6s ease}
+.ptick{position:absolute;top:0;bottom:0;width:3px;background:var(--bg);margin-left:-1px}
+#pwrap.full .pfill{background:linear-gradient(90deg,var(--accent),var(--ok))}
+@keyframes stagepop{0%{transform:scale(.5);opacity:0;color:#fff}55%{transform:scale(1.3);color:#fff}100%{transform:scale(1);opacity:1}}
+.sparkle{position:relative;display:inline-block;font-weight:800;padding:0 .12em;color:#ffe08a;
+  background:linear-gradient(100deg,#fbbf24 0%,#fff7d1 25%,#5eead4 50%,#fff7d1 75%,#fbbf24 100%);background-size:250% 100%;
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  animation:shimmer 2.2s linear infinite,glow 1.6s ease-in-out infinite}
+.sparkle::before,.sparkle::after{content:"\2726";position:absolute;font-size:.55em;color:#fff7d1;-webkit-text-fill-color:#fff7d1;opacity:0;animation:twinkle 1.4s ease-in-out infinite}
+.sparkle::before{left:-.15em;top:-.3em}
+.sparkle::after{right:-.15em;bottom:-.15em;animation-delay:.7s}
+@keyframes shimmer{from{background-position:0 0}to{background-position:-250% 0}}
+@keyframes glow{0%,100%{filter:drop-shadow(0 0 3px rgba(251,191,36,.45))}50%{filter:drop-shadow(0 0 10px rgba(251,191,36,.95))}}
+@keyframes twinkle{0%,100%{opacity:0;transform:scale(.4) rotate(0)}50%{opacity:1;transform:scale(1.25) rotate(45deg)}}
+@media (prefers-reduced-motion:reduce){
+  .sparkle{animation:none;background:none;-webkit-text-fill-color:#ffe08a;color:#ffe08a}
+  .sparkle::before,.sparkle::after{animation:none;opacity:1}
+  #pstage.up{animation:none}.pfill{transition:none}
+}
+.fest{display:inline-flex;align-items:center;gap:8px;margin:0 auto 12px;padding:5px 18px;border-radius:999px;border:1px solid var(--line);background:rgba(94,234,212,.08);color:var(--accent);font-weight:700;font-size:19px}
 .tbtn{
   font:inherit;font-size:17px;color:var(--text);background:transparent;border:1px solid var(--line);
   border-radius:10px;padding:6px 14px;cursor:pointer;
@@ -154,10 +181,13 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent2);outlin
 <body>
 <canvas id="stars"></canvas>
 <div id="topbar">
-  <div id="brand">📡 신호 제로<small>비트 스위치 통신</small></div>
-  <div id="progress"></div>
-  <button class="tbtn" id="btn-sound" type="button">🔇 소리 꺼짐</button>
+  <div id="brand">📡 외계 신호 해독<small>2026 갈산제 · 로직의 숲</small></div>
+  <button class="tbtn" id="btn-sound" type="button">🔊 소리 켜짐</button>
   <button class="tbtn" id="btn-home" type="button">처음으로</button>
+</div>
+<div id="pwrap" class="hide" role="progressbar" aria-label="전체 스테이지 진행" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+  <div class="pline"><span id="pstage"></span><span id="ptitle"></span><span id="pnote"></span></div>
+  <div class="ptrack" id="ptrack"><div class="pfill" id="pfill"></div></div>
 </div>
 <main id="app"></main>
 <noscript><p style="position:relative;z-index:3;padding:30px">이 게임은 자바스크립트가 필요해요. 브라우저 설정을 확인해 주세요.</p></noscript>
@@ -166,13 +196,15 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--accent2);outlin
 (function(){
 'use strict';
 
-/* ==================== 설정 ==================== */
+/* ==================== 설정 (여기만 고치면 돼요) ==================== */
 const CONFIG = {
   // 구글 Apps Script 웹 앱 주소(…/exec). 비워 두면 "테스트 모드"로 동작하며 아무 곳에도 전송하지 않아요.
   SHEET_URL: 'https://script.google.com/macros/s/AKfycbyUBY-O8MuuwYtLqDJKY7pFQWBOa8IE0AfQxqTEn5iaxU-P9X6Mwrocsv7yOm8LBHthTA/exec',
+  EVENT_NAME: '2026 갈산제',
+  CLUB_NAME: '로직의 숲',
   AUTO_RETURN_SEC: 45,   // 인증서 화면 → 처음 화면 자동 복귀(초)
   IDLE_RESET_SEC: 180,   // 아무 조작이 없으면 처음 화면으로(초) — 다음 사람 보호용
-  PRIVACY_TEXT: '입력한 학번과 이름은 학교 축제 참여 확인과 경품 추첨에만 사용하며, 행사가 끝나면 삭제합니다.'
+  PRIVACY_TEXT: '입력한 학번과 이름은 2026 갈산제 로직의 숲 부스 참여 확인과 경품 추첨에만 사용하며, 행사가 끝나면 삭제합니다. 동의합니다.'
 };
 
 /* ==================== 도구 ==================== */
@@ -196,6 +228,26 @@ function h(tag, attrs, ...kids){
 }
 const bin8 = n => n.toString(2).padStart(8,'0');
 const pad2 = n => String(n).padStart(2,'0');
+/* 한글 자판 → 영문 변환 (두벌식 기준). 한/영 상태와 관계없이 영어 알파벳으로 바꿔 줘요. */
+const JAMO_KEY = {'ㅂ':'q','ㅈ':'w','ㄷ':'e','ㄱ':'r','ㅅ':'t','ㅛ':'y','ㅕ':'u','ㅑ':'i','ㅐ':'o','ㅔ':'p','ㅁ':'a','ㄴ':'s','ㅇ':'d','ㄹ':'f','ㅎ':'g','ㅗ':'h','ㅓ':'j','ㅏ':'k','ㅣ':'l','ㅋ':'z','ㅌ':'x','ㅊ':'c','ㅍ':'v','ㅠ':'b','ㅜ':'n','ㅡ':'m',
+  'ㅃ':'q','ㅉ':'w','ㄸ':'e','ㄲ':'r','ㅆ':'t','ㅒ':'o','ㅖ':'p',
+  'ㅘ':'hk','ㅙ':'ho','ㅚ':'hl','ㅝ':'nj','ㅞ':'np','ㅟ':'nl','ㅢ':'ml',
+  'ㄳ':'rt','ㄵ':'sw','ㄶ':'sg','ㄺ':'fr','ㄻ':'fa','ㄼ':'fq','ㄽ':'ft','ㄾ':'fx','ㄿ':'fv','ㅀ':'fg','ㅄ':'qt'};
+const H_L = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ'.split('');
+const H_V = 'ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ'.split('');
+const H_T = ['','ㄱ','ㄲ','ㄳ','ㄴ','ㄵ','ㄶ','ㄷ','ㄹ','ㄺ','ㄻ','ㄼ','ㄽ','ㄾ','ㄿ','ㅀ','ㅁ','ㅂ','ㅄ','ㅅ','ㅆ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+function toEnglish(str){
+  let out = '';
+  for (const ch of String(str)){
+    const c = ch.codePointAt(0);
+    if (/[A-Za-z]/.test(ch)) out += ch;
+    else if (c >= 0xAC00 && c <= 0xD7A3){
+      const n = c - 0xAC00;
+      out += (JAMO_KEY[H_L[Math.floor(n / 588)]] || '') + (JAMO_KEY[H_V[Math.floor((n % 588) / 28)]] || '') + (JAMO_KEY[H_T[n % 28]] || '');
+    } else if (JAMO_KEY[ch]) out += JAMO_KEY[ch];
+  }
+  return out.toUpperCase();
+}
 const fmtTime = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
 
 /* ==================== 코드표(인코딩) ==================== */
@@ -203,7 +255,7 @@ const BOOKS = {
   ascii:   { name:'지구 코드표(아스키)', short:'아스키',   hint:'A=65, B=66 …',
              enc: c => c.charCodeAt(0),
              dec: n => (n>=32 && n<=126) ? String.fromCharCode(n) : null },
-  shifted: { name:'연습용 코드표',        short:'연습용 표', hint:'A=0, B=1 …',
+  shifted: { name:'연습용 코드표',        short:'연습용 표', sparkle:true, hint:'A=0, B=1 …',
              enc: c => c.charCodeAt(0)-65,
              dec: n => (n>=0 && n<=25) ? String.fromCharCode(65+n) : null },
   alien:   { name:'외계 코드표',          short:'외계 표',   hint:'A=1, B=2 …',
@@ -213,7 +265,7 @@ const BOOKS = {
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
 /* ==================== 소리 ==================== */
-let soundOn = false, ac = null;
+let soundOn = true, ac = null;
 function tone(f, d, type, vol, delay){
   if (!soundOn) return;
   try{
@@ -234,6 +286,7 @@ const sfx = {
   ok:   () => { tone(523,.15,'sine',.07); tone(659,.15,'sine',.07,.12); tone(784,.25,'sine',.07,.24); },
   bad:  () => tone(200,.28,'sawtooth',.04),
   beep: () => tone(880,.07,'square',.03),
+  up:   () => { tone(660,.09,'triangle',.06); tone(990,.18,'triangle',.06,.08); },
   win:  () => [523,659,784,1047].forEach((f,i)=>tone(f,.3,'sine',.07,i*.14))
 };
 $('#btn-sound').addEventListener('click', () => {
@@ -284,7 +337,33 @@ function screen(node, name){
   window.scrollTo(0,0);
   touch();
 }
-function setProgress(t){ $('#progress').textContent = t || ''; }
+const TOTAL_STAGES = 8;
+let prevStage = 0;
+(function(){ const tr = $('#ptrack'); for (let i = 1; i < TOTAL_STAGES; i++){ const t = h('i', {class:'ptick'}); t.style.left = (i / TOTAL_STAGES * 100) + '%'; tr.append(t); } })();
+function setProg(o){
+  const w = $('#pwrap');
+  if (!o){ w.classList.add('hide'); prevStage = 0; return; }
+  w.classList.remove('hide');
+  const st = $('#pstage'), tt = $('#ptitle'), nt = $('#pnote');
+  let done;
+  if (o.stage){
+    done = (o.stage - 1) + (o.sub || 0);
+    st.textContent = `스테이지 ${o.stage} / ${TOTAL_STAGES}`;
+    tt.textContent = o.title || ''; nt.textContent = o.note || '';
+    if (o.stage > prevStage){
+      st.classList.remove('up'); void st.offsetWidth; st.classList.add('up');
+      if (prevStage > 0) sfx.up();
+    }
+    prevStage = o.stage;
+  } else {
+    done = o.done || 0;
+    st.textContent = o.label || ''; tt.textContent = ''; nt.textContent = '';
+  }
+  const pct = Math.round(done / TOTAL_STAGES * 100);
+  $('#pfill').style.width = pct + '%';
+  w.setAttribute('aria-valuenow', String(pct));
+  w.classList.toggle('full', pct >= 100);
+}
 function sleep(ms){ const g = S.gen; return new Promise(r => setTimeout(() => { if (g === S.gen) r(); }, ms)); }
 
 $('#btn-home').addEventListener('click', () => {
@@ -295,7 +374,7 @@ function restart(){
   S.gen++;
   clearTimeout(idleTimer); clearInterval(returnTimer);
   S.id = S.name = S.nick = ''; S.t0 = 0;
-  setProgress('');
+  setProg(null);
   run();
 }
 
@@ -304,14 +383,15 @@ function startScreen(){
   return new Promise(res => {
     const idI = h('input', {id:'f-id', type:'text', inputmode:'numeric', maxlength:'8', placeholder:'예) 10215', autocomplete:'off'});
     const nmI = h('input', {id:'f-name', type:'text', maxlength:'10', placeholder:'예) 김우주', autocomplete:'off'});
-    const nkI = h('input', {id:'f-nick', type:'text', maxlength:'8', placeholder:'예) STAR', autocomplete:'off'});
+    const nkI = h('input', {id:'f-nick', type:'text', maxlength:'8', lang:'en', placeholder:'예) STAR  (알파벳만 · 최대 8자 · 한글 키보드여도 영어로 입력돼요)', autocomplete:'off', autocapitalize:'off', spellcheck:'false'});
     const agree = h('input', {id:'f-agree', type:'checkbox'});
     const err = h('div', {class:'err'});
     const go = h('button', {class:'btn', type:'button', disabled:true}, '신호 수신 시작 ▶');
+    let composing = false;
 
     function check(show){
       idI.value = idI.value.replace(/\D/g, '');
-      nkI.value = nkI.value.replace(/[^A-Za-z]/g, '');
+      if (!composing){ const f = toEnglish(nkI.value).slice(0, 8); if (f !== nkI.value) nkI.value = f; }
       const idOk = /^\d{3,8}$/.test(idI.value);
       const nmOk = nmI.value.trim().length >= 2;
       let msg = '';
@@ -323,6 +403,19 @@ function startScreen(){
       return !msg;
     }
     [idI, nmI, nkI].forEach(i => i.addEventListener('input', () => check(false)));
+    // 별명 칸: 한글 키보드 상태여도 눌린 자판(KeyA~KeyZ)을 그대로 영어로 입력
+    nkI.addEventListener('keydown', e => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const m = /^Key([A-Z])$/.exec(e.code || '');
+      if (!m) return;
+      e.preventDefault();
+      const a = nkI.selectionStart, b = nkI.selectionEnd;
+      if (nkI.value.length - (b - a) >= 8) return;
+      nkI.setRangeText(m[1], a, b, 'end');
+      check(false);
+    });
+    nkI.addEventListener('compositionstart', () => { composing = true; });
+    nkI.addEventListener('compositionend', () => { composing = false; check(false); });
     agree.addEventListener('change', () => check(false));
     function submit(){
       if (!check(true)) return;
@@ -337,7 +430,8 @@ function startScreen(){
 
     screen(h('div', {class:'card'},
       h('div', {class:'hero'},
-        h('div', {class:'kicker'}, '학교 축제 체험 · 약 5분'),
+        h('div', {class:'fest'}, `${CONFIG.EVENT_NAME} · 🌲 ${CONFIG.CLUB_NAME} 부스`),
+        h('div', {class:'kicker'}, '체험 시간 약 5분'),
         h('div', {class:'big'}, '외계 신호 해독'),
         h('div', {class:'tag'}, '비트 스위치로 컴퓨터의 언어를 배우고, 외계 문명과 대화해 봐요!')
       ),
@@ -345,7 +439,7 @@ function startScreen(){
         h('div', {class:'field'}, h('label', {for:'f-id'}, '학번'), idI),
         h('div', {class:'field'}, h('label', {for:'f-name'}, '이름'), nmI),
         h('div', {class:'field wide'},
-          h('label', {for:'f-nick'}, '영문 이름 또는 별명', h('i', null, '(선택) 알파벳만 · 최대 8자 — 마지막에 외계어로 바꿔 줘요')), nkI),
+          h('label', {for:'f-nick'}, '영문 이름 또는 별명', h('i', null, '(선택) 마지막에 외계어로 바꿔 줘요')), nkI),
         h('div', {class:'field wide'},
           h('label', {class:'consent', for:'f-agree'}, agree, h('span', null, CONFIG.PRIVACY_TEXT)))
       ),
@@ -372,7 +466,7 @@ function storyScreen(o){
 }
 function bookTable(book){
   return h('div', {class:'ref'},
-    h('div', {class:'reflabel'}, `${book.name} — ${book.hint}`),
+    h('div', {class:'reflabel'}, book.sparkle ? h('span', {class:'sparkle'}, book.name) : book.name, ` — ${book.hint}`),
     h('div', {class:'chips'}, LETTERS.map(l => h('span', {class:'chip'}, h('b', null, l), String(book.enc(l)))))
   );
 }
@@ -413,7 +507,7 @@ function makeBoard(bits, book){
     reading.replaceChildren(h('span', null, '숫자로 읽으면 '), h('b', null, String(v)));
     if (book){
       const c = book.dec(v);
-      reading.append(h('span', null, '   |   '), h('span', null, `${book.short}로 읽으면 `),
+      reading.append(h('span', null, '   |   '), h('span', null, book.sparkle ? h('span', {class:'sparkle'}, book.short) : book.short, '로 읽으면 '),
         h('b', {class: c ? 'ch' : 'ch none'}, c || '(글자 없음)'));
     }
   }
@@ -454,9 +548,9 @@ function oneTarget(m, t, idx){
         fb.textContent = (t.wrongHint && t.wrongHint(v)) || `지금 스위치 값은 ${v}이에요. 목표는 ${t.value}! 켜진 자리값을 더해 보세요.`;
       }
     }
-    setProgress(`${m.prog} · 문제 ${idx+1}/${m.targets.length}`);
+    setProg({stage:m.no, sub:idx / m.targets.length, title:m.title, note:`문제 ${idx+1}/${m.targets.length}`});
     screen(h('div', {class:'card'},
-      h('div', {class:'kicker'}, `${m.stage} · ${m.title}`),
+      h('div', {class:'kicker'}, `스테이지 ${m.no} · ${m.title}`),
       idx === 0 && m.intro ? h('p', {class:'sub', html:m.intro}) : null,
       h('div', {class:'prompt', html:t.ask}),
       board.el,
@@ -469,30 +563,31 @@ function oneTarget(m, t, idx){
 
 /* ==================== 스테이지 1 ==================== */
 const M1 = [
-  { stage:'스테이지 1', prog:'스테이지 1 · 미션 1/4', title:'4비트 스위치', bits:4,
+  { no:1, title:'4비트 스위치', bits:4,
     intro:'스위치 4개로 숫자를 만들어 봐요. <b>켜진 스위치 위의 자리값</b>(8·4·2·1)을 모두 더하면 그 숫자가 돼요.',
     targets:[5, 9, 14].map(v => ({ value:v, ask:`숫자 <b>${v}</b>을(를) 만드세요` })) },
-  { stage:'스테이지 1', prog:'스테이지 1 · 미션 2/4', title:'8비트 = 1바이트', bits:8,
+  { no:2, title:'8비트 = 1바이트', bits:8,
     intro:'4개로는 15까지만 만들 수 있어요. 스위치를 8개로 늘리면 0부터 255까지 만들 수 있어요. 이 8비트 묶음을 <b>1바이트</b>라고 해요.',
     targets:[20, 100, 200].map(v => ({ value:v, ask:`숫자 <b>${v}</b>을(를) 만드세요` })) },
-  { stage:'스테이지 1', prog:'스테이지 1 · 미션 3/4', title:'글자도 숫자로', bits:8, book:BOOKS.ascii,
+  { no:3, title:'글자도 숫자로', bits:8, book:BOOKS.ascii,
     intro:'컴퓨터는 글자도 숫자로 바꿔서 저장해요. 어떤 글자에 어떤 숫자를 붙일지 정해 둔 약속표가 <b>코드표</b>예요. 지구의 컴퓨터는 <b>아스키(ASCII) 코드표</b>를 써요. 아래 표를 보고 글자를 만들어 보세요.',
     targets:[
       { value:72, ask:'아스키 코드표로 글자 <b>H</b>를 만드세요' },
       { value:73, ask:'아스키 코드표로 글자 <b>I</b>를 만드세요', note:'H와 I를 차례로 보내면 <b>HI</b>! 이 신호를 잘 기억해 두세요.' }
     ] },
-  { stage:'스테이지 1', prog:'스테이지 1 · 미션 4/4', title:'코드표가 다르면?', bits:8,
+  { no:4, title:'코드표가 다르면?', bits:8,
     intro:'코드표는 정하기 나름이에요. 이번에는 같은 글자를 <b>서로 다른 코드표</b>로 만들어 볼게요.',
     targets:[
       { book:BOOKS.ascii, value:67, ask:'<b>아스키 코드표</b>로 글자 <b>C</b>를 만드세요' },
-      { book:BOOKS.shifted, value:2, ask:'<b>연습용 코드표(A=0, B=1 …)</b>로 글자 <b>C</b>를 만드세요',
+      { book:BOOKS.shifted, value:2, ask:'<span class="sparkle">연습용 코드표</span>(A=0, B=1 …)로 글자 <b>C</b>를 만드세요',
         wrongHint: v => v === 67 ? '그건 아스키 코드표의 C예요. 이번엔 A=0, B=1, C=? 로 세어 보세요.' : null,
         note:'같은 글자 <b>C</b>인데 <b>01000011</b>과 <b>00000010</b>으로 달라졌죠? 글자를 비트로 바꾸는 방식을 <b>인코딩</b>이라고 해요. <b>인코딩이 다르면 같은 비트도 다른 글자로 읽혀요!</b>' }
     ] }
 ];
 async function stage1(){
+  setProg({done:0, label:'훈련 준비 · 전체 8개 스테이지'});
   await storyScreen({
-    kicker:'스테이지 1 · 비트 스위치 훈련', title:'컴퓨터는 스위치로 말해요',
+    kicker:'지구 기지 · 비트 스위치 훈련', title:'컴퓨터는 스위치로 말해요',
     paras:[
       '컴퓨터 속에는 <b>켜짐(1)</b>과 <b>꺼짐(0)</b> 두 가지뿐인 아주 작은 스위치가 가득해요. 스위치 하나가 <b>1비트</b>예요.',
       '스위치를 여러 개 줄 세우면 큰 숫자도 나타낼 수 있어요. 오른쪽부터 자리값이 <b>1, 2, 4, 8…</b>처럼 두 배씩 커져요.',
@@ -512,7 +607,7 @@ function optionCard(key, title, sub, onPick){
 
 function decodeScreen(){
   return new Promise(res => {
-    setProgress('스테이지 2 · 미션 1/4');
+    setProg({stage:5, title:'첫 접촉'});
     const out = h('div', {class:'decoded', id:'decoded'});
     const fb = h('div', {class:'feedback', role:'status'});
     const cal = h('div', {class:'hintbox'});
@@ -545,7 +640,7 @@ function decodeScreen(){
      ['shifted','먼 별식 번역기','A=0, B=1 …'],
      ['alien','외계식 번역기','A=1, B=2 …']].forEach(([k, t, s]) => cards.push(optionCard(k, t, s, pick)));
     screen(h('div', {class:'card'},
-      h('div', {class:'kicker'}, '스테이지 2 · 첫 접촉'),
+      h('div', {class:'kicker'}, '스테이지 5 · 첫 접촉'),
       h('h2', null, '정체불명의 신호가 도착했어요!'),
       h('p', {class:'sub', html:'달 기지 안테나에 규칙적인 스위치 신호가 잡혔어요. 지구 번역기로 읽었더니 알 수 없는 기호뿐이에요. <b>번역 방식(코드표)</b>을 골라 신호를 해독해 보세요.'}),
       h('div', {class:'bytes'}, ALIEN_MSG.map(n => h('span', {class:'byte'}, bin8(n)))),
@@ -561,7 +656,7 @@ function decodeScreen(){
 
 function failSendScreen(){
   return new Promise(res => {
-    setProgress('스테이지 2 · 미션 2/4');
+    setProg({stage:6, title:'답장 보내기 ①'});
     const HI = [72, 73];
     const outEarth = h('div', {class:'bytes'}, HI.map(n => h('span', {class:'byte'}, bin8(n))));
     const outAlien = h('div', {class:'out', id:'alien-out'}, '…');
@@ -579,7 +674,7 @@ function failSendScreen(){
       send.style.display = 'none'; retry.style.display = ''; retry.focus();
     });
     screen(h('div', {class:'card'},
-      h('div', {class:'kicker'}, '스테이지 2 · 답장 보내기 ①'),
+      h('div', {class:'kicker'}, '스테이지 6 · 답장 보내기 ①'),
       h('h2', null, '우리 방식으로 인사해 볼까요?'),
       h('p', {class:'sub', html:'스테이지 1에서 만든 <b>HI</b> 신호(아스키)를 그대로 외계인에게 보내 볼게요.'}),
       h('div', {class:'exchange'},
@@ -594,7 +689,7 @@ function failSendScreen(){
 
 async function alienSendMission(){
   await boardMission({
-    stage:'스테이지 2', prog:'스테이지 2 · 미션 3/4', title:'답장 보내기 ②', bits:8, book:BOOKS.alien,
+    no:7, title:'답장 보내기 ②', bits:8, book:BOOKS.alien,
     intro:'이번에는 <b>외계 코드표(A=1, B=2 …)</b>로 HI를 보내 볼게요. 표를 보고 글자를 만들어 보세요.',
     targets:[
       { value:8, ask:'외계 코드표로 글자 <b>H</b>를 만드세요',
@@ -608,7 +703,7 @@ async function alienSendMission(){
 
 function agreeScreen(){
   return new Promise(res => {
-    setProgress('스테이지 2 · 미션 4/4');
+    setProg({stage:8, title:'공통 약속 만들기'});
     const fb = h('div', {class:'feedback', role:'status'});
     const stage = h('div');
     const next = h('button', {class:'btn', type:'button', id:'btn-next', style:'display:none', onclick:() => res()}, '다음 ▶');
@@ -639,7 +734,7 @@ function agreeScreen(){
      ['alien','외계 코드표로 통일','A=1, B=2 …'],
      ['shifted','새 코드표(A=0)로 통일','A=0, B=1 …']].forEach(([k, t, s]) => cards.push(optionCard(k, t, s, pick)));
     screen(h('div', {class:'card'},
-      h('div', {class:'kicker'}, '스테이지 2 · 공통 약속 만들기'),
+      h('div', {class:'kicker'}, '스테이지 8 · 공통 약속 만들기'),
       h('h2', null, '서로 같은 코드표를 쓰기로 해요'),
       h('p', {class:'sub', html:'외계인의 수신기는 코드표를 바꿀 수 있어요. 하지만 지구의 컴퓨터는 이미 <b>아스키 코드표</b>로 수십억 개의 글자를 저장해 두었어요. 양쪽이 같은 코드표를 쓰려면 어떤 걸로 맞추면 좋을까요?'}),
       h('div', {class:'opts'}, cards),
@@ -650,8 +745,9 @@ function agreeScreen(){
 }
 
 async function stage2(){
+  setProg({done:4, label:'스테이지 4 완료 · 외계 통신 준비'});
   await storyScreen({
-    kicker:'스테이지 2 · 첫 접촉', title:'우주에서 신호가 도착했어요',
+    kicker:'외계 통신 · 첫 접촉', title:'우주에서 신호가 도착했어요',
     paras:[
       '훈련을 마친 순간, 달 기지 안테나에 이상한 신호가 들어왔어요. 외계 문명이 보낸 걸까요?',
       '신호는 우리가 배운 것과 같은 <b>0과 1의 스위치 신호</b>예요. 하지만 지구의 번역기로는 읽을 수 없대요.',
@@ -662,6 +758,7 @@ async function stage2(){
   await failSendScreen();
   await alienSendMission();
   await agreeScreen();
+  setProg({done:8, label:'모든 스테이지 완료!'});
   await storyScreen({
     kicker:'통신 성공', title:'우리는 같은 약속을 만들었어요',
     paras:[
@@ -676,7 +773,7 @@ async function stage2(){
 function souvenirScreen(){
   if (!S.nick) return Promise.resolve();
   return new Promise(res => {
-    setProgress('기념 코드');
+    setProg({done:8, label:'모든 스테이지 완료!'});
     const items = S.nick.split('').map(ch => h('div', {class:'sv'},
       h('div', {class:'l'}, ch),
       h('div', {class:'c'}, '지구 ', h('b', null, bin8(BOOKS.ascii.enc(ch)))),
@@ -684,8 +781,8 @@ function souvenirScreen(){
     const btn = h('button', {class:'btn', type:'button', onclick:() => res()}, '인증서 받기 ▶');
     screen(h('div', {class:'card'},
       h('div', {class:'kicker'}, '기념 코드'),
-      h('h2', null, `"${S.nick}"을(를) 비트로 바꿨어요`),
-      h('p', {class:'sub'}, '같은 글자도 코드표에 따라 비트가 달라요. 사진으로 찍어 가도 좋아요!'),
+      h('h2', null, '별명을 비트로 바꿨어요'),
+      h('p', {class:'sub'}, '같은 글자도 코드표에 따라 비트가 달라요. ', h('b', null, `내 별명은 ${S.nick}! 외계어로는 이렇게 써요`)),
       h('div', {class:'souv'}, items),
       h('div', {class:'actions'}, btn)
     ), 'story');
@@ -762,11 +859,11 @@ function doneScreen(){
   const bPause = h('button', {class:'btn ghost', type:'button', onclick:() => { paused = !paused; bPause.textContent = paused ? '자동 복귀 켜기' : '자동 복귀 멈추기'; tick(); }}, '자동 복귀 멈추기');
   const bHome = h('button', {class:'btn', type:'button', id:'btn-restart', onclick:() => restart()}, '처음으로 ▶');
 
-  setProgress('완료!');
+  setProg({done:8, label:'모든 스테이지 완료!'});
   sfx.win();
   screen(h('div', {class:'card'},
     h('div', {class:'cert'},
-      h('div', {class:'kicker'}, '축제 체험 인증'),
+      h('div', {class:'kicker'}, `${CONFIG.EVENT_NAME} · ${CONFIG.CLUB_NAME} 부스 체험 인증`),
       h('div', {class:'t'}, '외계 통신 성공 인증서'),
       h('div', {class:'who', id:'cert-name'}, S.name),
       h('div', {class:'sid', id:'cert-id'}, `학번 ${S.id}`),
