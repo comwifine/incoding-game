@@ -52,6 +52,15 @@ body{
   .sparkle::before,.sparkle::after{animation:none;opacity:1}
   #pstage.up{animation:none}.pfill{transition:none}
 }
+.nickrow{display:flex;gap:12px;align-items:stretch}
+.nickbox{flex:1;min-height:58px;display:flex;align-items:center;gap:2px;font-size:28px;font-family:var(--mono);letter-spacing:.18em;padding:8px 14px;border-radius:12px;
+  border:2px solid var(--line);background:#0c1330;color:var(--text);cursor:text;outline:none;user-select:none}
+.nickbox:focus{border-color:var(--accent)}
+.nickbox .ph{color:#6c7aa5;font-family:inherit;font-size:20px;letter-spacing:0}
+.nickbox .cur{display:inline-block;width:3px;height:1.15em;background:var(--accent);margin-left:2px;animation:blink 1s steps(1) infinite;visibility:hidden}
+.nickbox:focus .cur{visibility:visible}
+@keyframes blink{50%{opacity:0}}
+.nickhelp{color:var(--sub);font-size:16px;margin-top:4px}
 .fest{display:inline-flex;align-items:center;gap:8px;margin:0 auto 12px;padding:5px 18px;border-radius:999px;border:1px solid var(--line);background:rgba(94,234,212,.08);color:var(--accent);font-weight:700;font-size:19px}
 .tbtn{
   font:inherit;font-size:17px;color:var(--text);background:transparent;border:1px solid var(--line);
@@ -203,6 +212,7 @@ const CONFIG = {
   EVENT_NAME: '2026 갈산제',
   CLUB_NAME: '로직의 숲',
   AUTO_RETURN_SEC: 45,   // 인증서 화면 → 처음 화면 자동 복귀(초)
+  AUTO_NEXT_SEC: 5,      // 정답이 나온 뒤 자동으로 다음 화면으로 넘어가는 시간(초). 0이면 자동 넘김 끔
   IDLE_RESET_SEC: 180,   // 아무 조작이 없으면 처음 화면으로(초) — 다음 사람 보호용
   PRIVACY_TEXT: '입력한 학번과 이름은 2026 갈산제 로직의 숲 부스 참여 확인과 경품 추첨에만 사용하며, 행사가 끝나면 삭제합니다.'
 };
@@ -228,26 +238,6 @@ function h(tag, attrs, ...kids){
 }
 const bin8 = n => n.toString(2).padStart(8,'0');
 const pad2 = n => String(n).padStart(2,'0');
-/* 한글 자판 → 영문 변환 (두벌식 기준). 한/영 상태와 관계없이 영어 알파벳으로 바꿔 줘요. */
-const JAMO_KEY = {'ㅂ':'q','ㅈ':'w','ㄷ':'e','ㄱ':'r','ㅅ':'t','ㅛ':'y','ㅕ':'u','ㅑ':'i','ㅐ':'o','ㅔ':'p','ㅁ':'a','ㄴ':'s','ㅇ':'d','ㄹ':'f','ㅎ':'g','ㅗ':'h','ㅓ':'j','ㅏ':'k','ㅣ':'l','ㅋ':'z','ㅌ':'x','ㅊ':'c','ㅍ':'v','ㅠ':'b','ㅜ':'n','ㅡ':'m',
-  'ㅃ':'q','ㅉ':'w','ㄸ':'e','ㄲ':'r','ㅆ':'t','ㅒ':'o','ㅖ':'p',
-  'ㅘ':'hk','ㅙ':'ho','ㅚ':'hl','ㅝ':'nj','ㅞ':'np','ㅟ':'nl','ㅢ':'ml',
-  'ㄳ':'rt','ㄵ':'sw','ㄶ':'sg','ㄺ':'fr','ㄻ':'fa','ㄼ':'fq','ㄽ':'ft','ㄾ':'fx','ㄿ':'fv','ㅀ':'fg','ㅄ':'qt'};
-const H_L = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ'.split('');
-const H_V = 'ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ'.split('');
-const H_T = ['','ㄱ','ㄲ','ㄳ','ㄴ','ㄵ','ㄶ','ㄷ','ㄹ','ㄺ','ㄻ','ㄼ','ㄽ','ㄾ','ㄿ','ㅀ','ㅁ','ㅂ','ㅄ','ㅅ','ㅆ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
-function toEnglish(str){
-  let out = '';
-  for (const ch of String(str)){
-    const c = ch.codePointAt(0);
-    if (/[A-Za-z]/.test(ch)) out += ch;
-    else if (c >= 0xAC00 && c <= 0xD7A3){
-      const n = c - 0xAC00;
-      out += (JAMO_KEY[H_L[Math.floor(n / 588)]] || '') + (JAMO_KEY[H_V[Math.floor((n % 588) / 28)]] || '') + (JAMO_KEY[H_T[n % 28]] || '');
-    } else if (JAMO_KEY[ch]) out += JAMO_KEY[ch];
-  }
-  return out.toUpperCase();
-}
 const fmtTime = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
 
 /* ==================== 코드표(인코딩) ==================== */
@@ -255,7 +245,7 @@ const BOOKS = {
   ascii:   { name:'지구 코드표(아스키)', short:'아스키',   hint:'A=65, B=66 …',
              enc: c => c.charCodeAt(0),
              dec: n => (n>=32 && n<=126) ? String.fromCharCode(n) : null },
-  shifted: { name:'연습용 코드표',        short:'연습용 표', sparkle:true, hint:'A=0, B=1 …',
+  shifted: { name:'연습용 코드표',        short:'연습용 표', hint:'A=0, B=1 …',
              enc: c => c.charCodeAt(0)-65,
              dec: n => (n>=0 && n<=25) ? String.fromCharCode(65+n) : null },
   alien:   { name:'외계 코드표',          short:'외계 표',   hint:'A=1, B=2 …',
@@ -383,15 +373,23 @@ function startScreen(){
   return new Promise(res => {
     const idI = h('input', {id:'f-id', type:'text', inputmode:'numeric', maxlength:'8', placeholder:'예) 10215', autocomplete:'off'});
     const nmI = h('input', {id:'f-name', type:'text', maxlength:'10', placeholder:'예) 김우주', autocomplete:'off'});
-    const nkI = h('input', {id:'f-nick', type:'text', maxlength:'8', lang:'en', placeholder:'예) STAR  (알파벳만 · 최대 8자 · 한글 키보드여도 영어로 입력돼요)', autocomplete:'off', autocapitalize:'off', spellcheck:'false'});
+    // 별명 칸: 입력창(input)이 아니라 키보드 이벤트만 받는 칸이에요. 한글 입력기가 개입하지 않아 한/영 상태와 상관없이 A~Z가 한 번씩만 들어가요.
+    const NICK_MAX = 8;
+    let nick = '';
+    const nkI = h('div', {id:'f-nick', class:'nickbox', tabindex:'0', role:'textbox', 'aria-label':'영문 별명 (선택, 알파벳 최대 8자)', lang:'en'});
+    const nkClear = h('button', {class:'btn ghost', type:'button', id:'btn-nick-clear', style:'font-size:18px;padding:8px 18px', onclick:() => { nick = ''; drawNick(); nkI.focus(); }}, '지우기');
+    function drawNick(){
+      nkI.replaceChildren(
+        nick ? h('span', null, nick) : h('span', {class:'ph'}, '여기를 클릭하고 알파벳 키를 눌러요 (예: STAR)'),
+        h('span', {class:'cur'}));
+      nkClear.style.visibility = nick ? 'visible' : 'hidden';
+    }
     const agree = h('input', {id:'f-agree', type:'checkbox'});
     const err = h('div', {class:'err'});
     const go = h('button', {class:'btn', type:'button', disabled:true}, '신호 수신 시작 ▶');
-    let composing = false;
 
     function check(show){
       idI.value = idI.value.replace(/\D/g, '');
-      if (!composing){ const f = toEnglish(nkI.value).slice(0, 8); if (f !== nkI.value) nkI.value = f; }
       const idOk = /^\d{3,8}$/.test(idI.value);
       const nmOk = nmI.value.trim().length >= 2;
       let msg = '';
@@ -402,24 +400,24 @@ function startScreen(){
       err.textContent = show ? msg : '';
       return !msg;
     }
-    [idI, nmI, nkI].forEach(i => i.addEventListener('input', () => check(false)));
-    // 별명 칸: 한글 키보드 상태여도 눌린 자판(KeyA~KeyZ)을 그대로 영어로 입력
+    [idI, nmI].forEach(i => i.addEventListener('input', () => check(false)));
     nkI.addEventListener('keydown', e => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       const m = /^Key([A-Z])$/.exec(e.code || '');
-      if (!m) return;
-      e.preventDefault();
-      const a = nkI.selectionStart, b = nkI.selectionEnd;
-      if (nkI.value.length - (b - a) >= 8) return;
-      nkI.setRangeText(m[1], a, b, 'end');
-      check(false);
+      if (m){
+        e.preventDefault();
+        if (!e.repeat && nick.length < NICK_MAX){ nick += m[1]; drawNick(); sfx.click(1); }
+      } else if (e.code === 'Backspace'){
+        e.preventDefault(); nick = nick.slice(0, -1); drawNick();
+      } else if (e.code === 'Delete' || e.code === 'Escape'){
+        e.preventDefault(); nick = ''; drawNick();
+      }   // Tab·Enter 등은 그대로 동작
     });
-    nkI.addEventListener('compositionstart', () => { composing = true; });
-    nkI.addEventListener('compositionend', () => { composing = false; check(false); });
+    nkI.addEventListener('click', () => nkI.focus());
     agree.addEventListener('change', () => check(false));
     function submit(){
       if (!check(true)) return;
-      S.id = idI.value; S.name = nmI.value.trim(); S.nick = nkI.value.toUpperCase(); S.t0 = Date.now();
+      S.id = idI.value; S.name = nmI.value.trim(); S.nick = nick; S.t0 = Date.now();
       sfx.beep(); res();
     }
     go.addEventListener('click', submit);
@@ -439,18 +437,36 @@ function startScreen(){
         h('div', {class:'field'}, h('label', {for:'f-id'}, '학번'), idI),
         h('div', {class:'field'}, h('label', {for:'f-name'}, '이름'), nmI),
         h('div', {class:'field wide'},
-          h('label', {for:'f-nick'}, '영문 이름 또는 별명', h('i', null, '(선택) 마지막에 외계어로 바꿔 줘요')), nkI),
+          h('label', {id:'l-nick'}, '영문 이름 또는 별명', h('i', null, '(선택) 알파벳만 · 최대 8자 · 마지막에 외계어로 바꿔 줘요')),
+          h('div', {class:'nickrow'}, nkI, nkClear),
+          h('div', {class:'nickhelp'}, '한글 키보드 상태여도 괜찮아요. 누른 자판 그대로 영어로 입력돼요. 지우기는 Backspace')),
         h('div', {class:'field wide'},
           h('label', {class:'consent', for:'f-agree'}, agree, h('span', null, CONFIG.PRIVACY_TEXT)))
       ),
       err,
       h('div', {class:'actions'}, go)
     ), 'start');
+    drawNick();
     idI.focus();
   });
 }
 
 /* ==================== 공통 화면 ==================== */
+// 정답 화면에서 N초 뒤 자동으로 다음으로. 버튼에 남은 초가 보이고, 그 전에 눌러도 돼요.
+function autoAdvance(btn, go){
+  const sec = CONFIG.AUTO_NEXT_SEC;
+  if (!sec || sec < 1) return;
+  const base = btn.textContent, g = S.gen;
+  let left = sec;
+  btn.textContent = `${base} (${left})`;
+  const t = setInterval(() => {
+    if (g !== S.gen || !btn.isConnected){ clearInterval(t); return; }
+    left--;
+    if (left <= 0){ clearInterval(t); go(); }
+    else btn.textContent = `${base} (${left})`;
+  }, 1000);
+  btn.addEventListener('click', () => clearInterval(t));
+}
 function storyScreen(o){
   return new Promise(res => {
     const btn = h('button', {class:'btn', type:'button', onclick:() => res()}, o.button || '다음 ▶');
@@ -466,7 +482,7 @@ function storyScreen(o){
 }
 function bookTable(book){
   return h('div', {class:'ref'},
-    h('div', {class:'reflabel'}, book.sparkle ? h('span', {class:'sparkle'}, book.name) : book.name, ` — ${book.hint}`),
+    h('div', {class:'reflabel'}, `${book.name} — ${book.hint}`),
     h('div', {class:'chips'}, LETTERS.map(l => h('span', {class:'chip'}, h('b', null, l), String(book.enc(l)))))
   );
 }
@@ -507,7 +523,7 @@ function makeBoard(bits, book){
     reading.replaceChildren(h('span', null, '숫자로 읽으면 '), h('b', null, String(v)));
     if (book){
       const c = book.dec(v);
-      reading.append(h('span', null, '   |   '), h('span', null, book.sparkle ? h('span', {class:'sparkle'}, book.short) : book.short, '로 읽으면 '),
+      reading.append(h('span', null, '   |   '), h('span', null, `${book.short}로 읽으면 `),
         h('b', {class: c ? 'ch' : 'ch none'}, c || '(글자 없음)'));
     }
   }
@@ -541,7 +557,7 @@ function oneTarget(m, t, idx){
         fb.replaceChildren(`정답! ${board.bits()} = ${t.value}`);
         if (t.note) fb.append(h('div', {html:t.note, style:'margin-top:8px;color:var(--text)'}));
         bCheck.style.display = 'none'; bHint.style.display = 'none'; bNext.style.display = '';
-        bNext.focus();
+        bNext.focus(); autoAdvance(bNext, res);
       } else {
         sfx.bad();
         fb.className = 'feedback bad';
@@ -629,7 +645,7 @@ function decodeScreen(){
         fb.replaceChildren('해독 성공! 외계인이 "HELLO"라고 인사했어요!',
           h('div', {style:'margin-top:8px;color:var(--text)', html:'첫 번째 신호 <b>00001000</b>은 코드표에 따라 ▯, I, H로 다르게 읽혔어요. 비트를 글자로 바꾸는 약속(인코딩)을 알아야 해독할 수 있어요.'}));
         cards.forEach(c => c.disabled = true);
-        bCal.style.display = 'none'; next.style.display = ''; next.focus();
+        bCal.style.display = 'none'; next.style.display = ''; next.focus(); autoAdvance(next, res);
       }
     }
     const bCal = h('button', {class:'btn ghost', type:'button', id:'btn-cal', onclick:() => {
@@ -728,7 +744,7 @@ function agreeScreen(){
       o.textContent = decodeWith(BOOKS.ascii, HI);
       sfx.win(); fb.className = 'feedback ok';
       fb.textContent = '통신 성공! 이제 같은 코드표를 쓰니 "HI"가 그대로 전달돼요.';
-      next.style.display = ''; next.focus();
+      next.style.display = ''; next.focus(); autoAdvance(next, res);
     }
     [['ascii','지구 코드표(아스키)로 통일','A=65, B=66 …'],
      ['alien','외계 코드표로 통일','A=1, B=2 …'],
